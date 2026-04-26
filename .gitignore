@@ -1,0 +1,6 @@
+# Ignore large files
+pairs/
+model/
+__pycache__/
+*.pyc
+venv/
