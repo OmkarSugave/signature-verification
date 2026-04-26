@@ -14,58 +14,30 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_DIR = os.path.join(BASE_DIR, "model")
 MODEL_PATH = os.path.join(MODEL_DIR, "siamese_model.keras")
 
-# ✅ YOUR GOOGLE DRIVE FILE ID
-FILE_ID = "1gm52FWe69BqTL3nLOts92vMa2XIJvmG6"
+# ✅ YOUR DROPBOX DIRECT LINK
+MODEL_URL = "https://www.dropbox.com/scl/fi/b97yh2t2er23z7wmdm4mr/siamese_model.keras?rlkey=ndrk0fdns4yfeuv5r3kzttu61&st=zpafh2z2&dl=1"
 
-# Google Drive download URL
-MODEL_URL = f"https://drive.google.com/uc?export=download&id={FILE_ID}"
-
-
-# 🔥 Create model folder
+# Ensure folder exists
 os.makedirs(MODEL_DIR, exist_ok=True)
 
-
-# 🔥 Handle Google Drive large file download
-def download_model():
-    print("Downloading model from Google Drive...")
-
-    session = requests.Session()
-    response = session.get(MODEL_URL, stream=True)
-
-    # Handle Google Drive confirmation token
-    for key, value in response.cookies.items():
-        if key.startswith("download_warning"):
-            params = {"id": FILE_ID, "confirm": value}
-            response = session.get("https://drive.google.com/uc", params=params, stream=True)
-            break
+# Download model if missing
+if not os.path.exists(MODEL_PATH):
+    print("Downloading model...")
+    
+    r = requests.get(MODEL_URL)
+    
+    if r.status_code != 200:
+        raise Exception("Failed to download model")
 
     with open(MODEL_PATH, "wb") as f:
-        for chunk in response.iter_content(8192):
-            if chunk:
-                f.write(chunk)
+        f.write(r.content)
 
     print("Download complete")
-
-
-# 🔥 Ensure valid model exists
-def ensure_model():
-    if not os.path.exists(MODEL_PATH):
-        download_model()
-
-    # Validate file size (avoid HTML file issue)
-    if os.path.getsize(MODEL_PATH) < 1_000_000:
-        print("Downloaded file invalid. Re-downloading...")
-        os.remove(MODEL_PATH)
-        download_model()
-
-
-ensure_model()
 
 print("Loading model...")
 model = load_model(MODEL_PATH, compile=False)
 
 
-# 🔥 Preprocessing
 def preprocess(file):
     file_bytes = np.frombuffer(file.read(), np.uint8)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
@@ -80,7 +52,6 @@ def preprocess(file):
     return img.reshape(1, IMG_SIZE, IMG_SIZE, 1)
 
 
-# 🔥 Main route
 @app.route("/", methods=["GET", "POST"])
 def index():
     result = None
