@@ -1,3 +1,4 @@
+
 import os
 import numpy as np
 import cv2
@@ -10,25 +11,33 @@ app = Flask(__name__)
 
 IMG_SIZE = 105
 
-# ✅ Correct base path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(BASE_DIR, "model", "siamese_model.keras")
+MODEL_DIR = os.path.join(BASE_DIR, "model")
+MODEL_PATH = os.path.join(MODEL_DIR, "siamese_model.keras")
 
-# 🔥 IMPORTANT: Add your model download link here
+# 🔥 PUT YOUR REAL DIRECT LINK HERE
 MODEL_URL = "https://drive.google.com/file/d/1gm52FWe69BqTL3nLOts92vMa2XIJvmG6/view?usp=sharing"
 
+# ✅ Ensure model folder exists
+os.makedirs(MODEL_DIR, exist_ok=True)
 
-# 🔥 Download model if not present
+# 🔥 Download model safely
 if not os.path.exists(MODEL_PATH):
-    os.makedirs(os.path.join(BASE_DIR, "model"), exist_ok=True)
     print("Downloading model...")
-    urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+    try:
+        urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+        print("Model downloaded successfully")
+    except Exception as e:
+        print("Download failed:", e)
 
-print("Loading model from:", MODEL_PATH)
+# 🔥 Check again before loading
+if not os.path.exists(MODEL_PATH):
+    raise ValueError("Model file not found after download")
+
+print("Loading model...")
 model = load_model(MODEL_PATH, compile=False)
 
 
-# 🔥 Preprocess image
 def preprocess(file):
     file_bytes = np.frombuffer(file.read(), np.uint8)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
@@ -43,7 +52,6 @@ def preprocess(file):
     return img.reshape(1, IMG_SIZE, IMG_SIZE, 1)
 
 
-# 🔥 Main route
 @app.route("/", methods=["GET", "POST"])
 def index():
     result = None
@@ -65,8 +73,6 @@ def index():
             return render_template("index.html", result=result)
 
         score = float(model.predict([img1, img2])[0][0])
-
-        print("Similarity Score:", score)
 
         if score > 0.6:
             result = "Genuine Signature ✅"
