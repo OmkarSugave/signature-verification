@@ -1,9 +1,8 @@
-
 import os
 import numpy as np
 import cv2
 import tensorflow as tf
-import urllib.request
+import requests
 from flask import Flask, render_template, request
 from tensorflow.keras.models import load_model
 
@@ -15,24 +14,31 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_DIR = os.path.join(BASE_DIR, "model")
 MODEL_PATH = os.path.join(MODEL_DIR, "siamese_model.keras")
 
-# 🔥 PUT YOUR REAL DIRECT LINK HERE
-MODEL_URL = "https://drive.google.com/file/d/1gm52FWe69BqTL3nLOts92vMa2XIJvmG6/view?usp=sharing"
+# ✅ YOUR FIXED DIRECT LINK
+MODEL_URL = "https://drive.google.com/uc?export=download&id=1gm52FWe69BqTL3nLOts92vMa2XIJvmG6"
 
-# ✅ Ensure model folder exists
+# 🔥 Ensure directory exists
 os.makedirs(MODEL_DIR, exist_ok=True)
 
-# 🔥 Download model safely
-if not os.path.exists(MODEL_PATH):
+# 🔥 Download model (robust)
+def download_model():
     print("Downloading model...")
-    try:
-        urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
-        print("Model downloaded successfully")
-    except Exception as e:
-        print("Download failed:", e)
+    
+    response = requests.get(MODEL_URL, stream=True)
+    
+    if response.status_code != 200:
+        raise Exception("Failed to download model")
 
-# 🔥 Check again before loading
-if not os.path.exists(MODEL_PATH):
-    raise ValueError("Model file not found after download")
+    with open(MODEL_PATH, "wb") as f:
+        for chunk in response.iter_content(8192):
+            if chunk:
+                f.write(chunk)
+
+    print("Download complete")
+
+# 🔥 Ensure valid model file
+if not os.path.exists(MODEL_PATH) or os.path.getsize(MODEL_PATH) < 1000000:
+    download_model()
 
 print("Loading model...")
 model = load_model(MODEL_PATH, compile=False)
